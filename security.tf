@@ -1,18 +1,13 @@
-// Security Group para o Load Balancer (ALB), buscando permitir tráfego HTTP na porta 80 e permitindo que o ALB se comunique com qualquer lugar (egress)
+// SG do Load Balancer: no qual permite tráfego da web
 resource "aws_security_group" "alb_sg" {
   name        = "alb-sg"
-  description = "Permite tráfego HTTP para o ALB"
   vpc_id      = aws_vpc.main.id
-
-  // Regra de entrada: permite tráfego na porta 80 de qualquer lugar
   ingress {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
-
-  // Regra de saída: permite que o ALB se comunique com qualquer lugar
   egress {
     from_port   = 0
     to_port     = 0
@@ -21,21 +16,34 @@ resource "aws_security_group" "alb_sg" {
   }
 }
 
-// Security Group para as instâncias EC2, isso permite que as instâncias recebam tráfego do ALB
+// SG das Instâncias EC2: no qual permite tráfego do ALB e saída para o DB
 resource "aws_security_group" "instance_sg" {
-  name        = "instance-sg"
-  description = "Permite tráfego do ALB"
-  vpc_id      = aws_vpc.main.id
-
-  // Regra de entrada na qual permite tráfego na porta 80 APENAS do Security Group do ALB
+  name   = "instance-sg"
+  vpc_id = aws_vpc.main.id
   ingress {
     from_port       = 80
     to_port         = 80
     protocol        = "tcp"
     security_groups = [aws_security_group.alb_sg.id]
   }
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
 
-  // Regra de saída na qual permite que as instâncias acessem a internet (ex: para atualizações)
+// SG do Banco de Dados: no qual permite tráfego das instâncias EC2 na porta do Postgres
+resource "aws_security_group" "db_sg" {
+  name   = "db-sg"
+  vpc_id = aws_vpc.main.id
+  ingress {
+    from_port       = 5432 // Porta do PostgreSQL, que é a porta padrão do RDS PostgreSQL
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [aws_security_group.instance_sg.id]
+  }
   egress {
     from_port   = 0
     to_port     = 0
