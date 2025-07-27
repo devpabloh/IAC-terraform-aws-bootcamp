@@ -1,0 +1,1 @@
+db_password = "SUA_SENHA_FORTE_AQUI"
